@@ -29,6 +29,21 @@ class PlayState(BaseState):
         pong.player2.update(dt)
         pong.ball.update(dt)
 
+        if settings.AI_MODE:
+        
+            y_paddle_center = pong.player1.y + pong.player1.height / 2
+            y_ball_center = pong.ball.y + pong.ball.height /2
+
+            diff = y_ball_center - y_paddle_center
+
+            if diff > 0:
+                pong.player1.vy = settings.PADDLE_SPEED 
+            elif abs (diff) < 5:
+                pong.player1.vy = 0
+            else:
+                pong.player1.vy = -settings.PADDLE_SPEED 
+
+
         ball_rect = pong.ball.get_rect()
 
         if ball_rect.left > settings.VIRTUAL_WIDTH:
@@ -104,6 +119,10 @@ class PlayState(BaseState):
         pong = self.pong
 
         if input_id in ("p1_up", "p1_down"):
+
+            if settings.AI_MODE:
+                return
+
             if input_data.pressed:
                 pong.player1.vy = (
                     -settings.PADDLE_SPEED if input_id == "p1_up" else settings.PADDLE_SPEED
