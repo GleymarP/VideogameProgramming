@@ -11,6 +11,7 @@ class PauseState(BaseState):
         self.world = params["world"]
         self.bird = params["bird"]
         self.score = params["score"]
+        self.strategy = params["strategy"]
 
 
     def render(self, surface: pygame.Surface) ->None:
@@ -34,6 +35,7 @@ class PauseState(BaseState):
                  world=self.world,
                  bird=self.bird,
                  score=self.score,
+                 strategy = self.strategy,
                  resume = True
                 )
 

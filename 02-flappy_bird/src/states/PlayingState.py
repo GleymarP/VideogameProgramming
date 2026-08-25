@@ -17,6 +17,7 @@ from gale.text import render_text
 import settings
 from src.Bird import Bird
 from src.World import World
+from src.Strategy import NormalStrategy
 
 
 class PlayingState(BaseState):
@@ -32,10 +33,12 @@ class PlayingState(BaseState):
                 settings.BIRD_HEIGHT,
             )
             self.score = 0
+            self.strategy = params.get("strategy", NormalStrategy())
         else:
             self.world = params["world"]
             self.bird = params["bird"]
             self.score = params["score"]
+            self.strategy = params["strategy"]
 
 
     def update(self, dt: float) -> None:
@@ -45,7 +48,7 @@ class PlayingState(BaseState):
         if self.world.collides(self.bird.get_rect()):
             settings.SOUNDS["explosion"].play()
             settings.SOUNDS["hurt"].play()
-            self.state_machine.change("count_down")
+            self.state_machine.change("count_down", strategy = self.strategy)
             return
 
         if self.world.update_scored(self.bird.get_rect()):
@@ -66,12 +69,13 @@ class PlayingState(BaseState):
         )
 
     def on_input(self, input_id: str, input_data: InputData) -> None:
-        if input_id == "jump" and input_data.pressed:
-            self.bird.jump()
-        elif input_id == "pause" and input_data.pressed:
+      
+        self.strategy.handle_bird_movement(self.bird, input_id, input_data)
+        if input_id == "pause" and input_data.pressed:
             self.state_machine.change(
                 "paused",
                 world=self.world,
                 bird=self.bird,
                 score=self.score,
+                strategy = self.strategy,
                 )
