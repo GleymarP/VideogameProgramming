@@ -8,8 +8,6 @@ alejandro.j.mujic4@gmail.com
 This file contains the definition of the class PlayingState.
 """
 
-from typing import Optional
-
 import pygame
 
 from gale.input_handler import InputData
@@ -22,16 +20,23 @@ from src.World import World
 
 
 class PlayingState(BaseState):
-    def enter(self, world: Optional[World] = None) -> None:
-        self.world = world if world is not None else World()
-        self.world.reset(True)
-        self.bird = Bird(
-            settings.VIRTUAL_WIDTH / 2 - settings.BIRD_WIDTH / 2,
-            settings.VIRTUAL_HEIGHT / 2 - settings.BIRD_HEIGHT / 2,
-            settings.BIRD_WIDTH,
-            settings.BIRD_HEIGHT,
-        )
-        self.score = 0
+    def enter(self, **params: dict) -> None:
+
+        if not params.get("resume", False):
+            self.world = World()
+            self.world.reset(True)
+            self.bird = Bird(
+                settings.VIRTUAL_WIDTH / 2 - settings.BIRD_WIDTH / 2,
+                settings.VIRTUAL_HEIGHT / 2 - settings.BIRD_HEIGHT / 2,
+                settings.BIRD_WIDTH,
+                settings.BIRD_HEIGHT,
+            )
+            self.score = 0
+        else:
+            self.world = params["world"]
+            self.bird = params["bird"]
+            self.score = params["score"]
+
 
     def update(self, dt: float) -> None:
         self.bird.update(dt)
@@ -63,3 +68,10 @@ class PlayingState(BaseState):
     def on_input(self, input_id: str, input_data: InputData) -> None:
         if input_id == "jump" and input_data.pressed:
             self.bird.jump()
+        elif input_id == "pause" and input_data.pressed:
+            self.state_machine.change(
+                "paused",
+                world=self.world,
+                bird=self.bird,
+                score=self.score,
+                )
