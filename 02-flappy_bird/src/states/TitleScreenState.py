@@ -16,6 +16,7 @@ from gale.text import render_text
 
 import settings
 from src.World import World
+from src.Strategy import HardStrategy, NormalStrategy
 
 
 class TitleScreenState(BaseState):
@@ -39,15 +40,28 @@ class TitleScreenState(BaseState):
         )
         render_text(
             surface,
-            "Press Enter to start",
+            "Press N for normal mode",
             settings.FONTS["medium"],
             settings.VIRTUAL_WIDTH / 2,
-            2 * settings.VIRTUAL_HEIGHT / 3,
+            settings.VIRTUAL_HEIGHT / 2,
             settings.COLOR_WHITE,
-            center=True,
+            center= True,
             shadowed=True,
+        )
+        render_text(
+            surface,
+            "Press H for hard mode",
+            settings.FONTS["medium"],
+            settings.VIRTUAL_WIDTH / 2,
+            settings.VIRTUAL_HEIGHT / 2 + 30,
+            settings.COLOR_WHITE,
+            center = True,
+            shadowed= True,
         )
 
     def on_input(self, input_id: str, input_data: InputData) -> None:
-        if input_id == "confirm" and input_data.pressed:
-            self.state_machine.change("count_down")
+        
+        if input_id == "normal_mode":
+            self.state_machine.change("count_down", strategy = NormalStrategy())
+        elif input_id == "hard_mode" :
+            self.state_machine.change("count_down", strategy = HardStrategy())
