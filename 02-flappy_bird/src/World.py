@@ -18,10 +18,10 @@ from gale.factory import Factory
 
 import settings
 from src.LogPair import LogPair
-
+from src.Strategy import NormalStrategy
 
 class World:
-    def __init__(self, generate_logs: bool = False) -> None:
+    def __init__(self, strategy = None, generate_logs: bool = False) -> None:
         self.generate_logs: bool = generate_logs
         self.background_x: float = 0.0
         self.ground_x: float = 0.0
@@ -29,9 +29,11 @@ class World:
         self.logs_spawn_timer: float = 0.0
         self.last_log_y: float = -settings.LOG_HEIGHT + random.randint(0, 80) + 20
         self.log_pair_factory: Factory = Factory(LogPair)
-
-    def reset(self, generate_logs: bool) -> None:
+        self.strategy = strategy if strategy is not None else NormalStrategy() 
+    
+    def reset(self, generate_logs: bool, strategy) -> None:
         self.generate_logs = generate_logs
+        self.strategy = strategy
 
     def collides(self, rect: pygame.Rect) -> bool:
         if rect.bottom >= settings.VIRTUAL_HEIGHT:
@@ -46,17 +48,14 @@ class World:
         if self.generate_logs:
             self.logs_spawn_timer += dt
 
-            if self.logs_spawn_timer >= settings.TIME_TO_SPAWN_LOGS:
+            if self.logs_spawn_timer >= self.strategy.get_spawn_interval():
                 self.logs_spawn_timer = 0.0
-                y = max(
-                    -settings.LOG_HEIGHT + 10,
-                    min(
-                        self.last_log_y + random.randint(-20, 20),
-                        settings.VIRTUAL_HEIGHT + 90 - settings.LOG_HEIGHT,
-                    ),
-                )
+                y = self.strategy.calculate_log_y(self.last_log_y)
                 self.last_log_y = y
-                self.logs.append(self.log_pair_factory.create(settings.VIRTUAL_WIDTH, y))
+
+                log_pair = self.strategy.create_log_pair(self.log_pair_factory, settings.VIRTUAL_WIDTH, y)
+                self.logs.append(log_pair)
+
 
         self.background_x += -settings.BACK_SCROLL_SPEED * dt
 
