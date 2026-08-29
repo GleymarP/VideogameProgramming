@@ -9,18 +9,18 @@ This file contains the class FlappyBird as a specialization of gale.Game
 """
 
 import pygame
+import settings
 
 from gale.game import Game
 from gale.input_handler import InputData
 from gale.state import StateMachine
 
-import settings
 from src import states
-
 
 class FlappyBird(Game):
     def init(self) -> None:
-        pygame.mixer.music.play(loops=-1)
+        pygame.mixer.music.load(settings.MUSIC["normal"])
+        pygame.mixer.music.play(-1)
         self.state_machine = StateMachine(
             {
                 "title": states.TitleScreenState,
