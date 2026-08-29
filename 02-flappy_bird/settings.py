@@ -20,10 +20,11 @@ input_handler.InputHandler.set_keyboard_action(input_handler.KEY_ESCAPE, "quit")
 input_handler.InputHandler.set_keyboard_action(input_handler.KEY_RETURN, "confirm")
 input_handler.InputHandler.set_mouse_click_action(input_handler.MOUSE_BUTTON_1, "jump")
 input_handler.InputHandler.set_keyboard_action(input_handler.KEY_SPACE, "pause")
-input_handler.InputHandler.set_keyboard_action(input_handler.KEY_LEFT, "move_left")
-input_handler.InputHandler.set_keyboard_action(input_handler.KEY_RIGHT, "move_right")
+input_handler.InputHandler.set_keyboard_action(input_handler.KEY_a, "move_left")
+input_handler.InputHandler.set_keyboard_action(input_handler.KEY_d, "move_right")
 input_handler.InputHandler.set_keyboard_action(input_handler.KEY_n, "normal_mode")
 input_handler.InputHandler.set_keyboard_action(input_handler.KEY_h, "hard_mode")
+input_handler.InputHandler.set_keyboard_action(input_handler.KEY_m, "menu_select")
 
 TITLE = "Flappy Bird"
 
@@ -66,6 +67,8 @@ TEXTURES = {
     "background": pygame.image.load(BASE_DIR / "assets" / "graphics" / "background.png"),
     "ground": pygame.image.load(BASE_DIR / "assets" / "graphics" / "ground.png"),
     "log": pygame.image.load(BASE_DIR / "assets" / "graphics" / "log.png"),
+    "power": pygame.image.load(BASE_DIR / "assets" / "graphics" / "power_up.png"),
+    "ghost": pygame.image.load(BASE_DIR / "assets" / "graphics" / "ghost.png"),
 }
 # The top log of every pair is the same image, flipped upside down.
 TEXTURES["log_inverted"] = pygame.transform.flip(TEXTURES["log"], False, True)
@@ -75,9 +78,13 @@ SOUNDS = {
     "explosion": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "explosion.wav"),
     "hurt": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "hurt.wav"),
     "score": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "score.wav"),
+    "wood": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "wood.wav" ),
 }
 
-pygame.mixer.music.load(BASE_DIR / "assets" / "sounds" / "marios_way.ogg")
+MUSIC = {
+    "normal" : BASE_DIR / "assets" / "sounds" / "marios_way.ogg",
+    "ghost" : BASE_DIR / "assets" / "sounds" / "ghost_way.wav",
+}
 
 FONTS = {
     "medium": pygame.font.Font(BASE_DIR / "assets" / "fonts" / "font.ttf", MEDIUM_TEXT_SIZE),
@@ -89,3 +96,6 @@ FONTS = {
 
 COLOR_BACKGROUND = (0, 0, 0)
 COLOR_WHITE = (255, 255, 255)
+
+POWERUP_WIDTH = 24
+POWERUP_HEIGHT = 24
