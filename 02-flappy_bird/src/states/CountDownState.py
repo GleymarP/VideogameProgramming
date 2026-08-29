@@ -17,14 +17,13 @@ import settings
 from src.World import World
 from src.Strategy import NormalStrategy
 
-
 class CountDownState(BaseState):
     def enter(self, **params: dict) -> None:
-        self.world = World(generate_logs=False)
+        self.strategy = params.get("strategy", NormalStrategy() )
+        self.world = World(strategy= self.strategy, generate_logs=False)
         self.counter = 3
         self.timer = 0.0
-        self.strategy = params.get("strategy", NormalStrategy() )
-
+       
     def update(self, dt: float) -> None:
         self.timer += dt
 
