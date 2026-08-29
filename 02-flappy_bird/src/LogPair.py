@@ -11,32 +11,50 @@ apart, that scroll left together and score once the bird passes them.
 """
 
 import pygame
-
 import settings
 
-
 class LogPair:
-    def __init__(self, x: float, y: float) -> None:
+    def __init__(self, x: float, y: float, moving: bool = False) -> None:
         self.x: float = x
         self.y: float = y
         self.scored: bool = False
+        self.moving: bool = moving
+        self.direction: int = 1
+        self.gap_offset : float = 0.0
 
     def get_top_rect(self) -> pygame.Rect:
-        return pygame.Rect(round(self.x), round(self.y), settings.LOG_WIDTH, settings.LOG_HEIGHT)
+        return pygame.Rect(round(self.x), round(self.y + self.gap_offset), settings.LOG_WIDTH, settings.LOG_HEIGHT)
 
     def get_bottom_rect(self) -> pygame.Rect:
         return pygame.Rect(
             round(self.x),
-            round(self.y + settings.LOGS_GAP + settings.LOG_HEIGHT),
+            round(self.y + settings.LOGS_GAP + settings.LOG_HEIGHT - self.gap_offset),
             settings.LOG_WIDTH,
             settings.LOG_HEIGHT,
         )
+    
+    def get_gap_center(self) -> float:
+        top_bottom = self.get_top_rect().bottom
+        bottom_top = self.get_bottom_rect().top
+        return(top_bottom + bottom_top) / 2 
 
     def collides(self, rect: pygame.Rect) -> bool:
         return self.get_top_rect().colliderect(rect) or self.get_bottom_rect().colliderect(rect)
 
     def update(self, dt: float) -> None:
         self.x += -settings.MAIN_SCROLL_SPEED * dt
+
+        if self.moving:
+            settings.SOUNDS["wood"].play()
+            self.gap_offset += self.direction * 20 * dt
+
+            if self.gap_offset >= 30:
+                self.gap_offset = 30
+                self.direction = -1
+            elif self.gap_offset <= 0:
+                self.gap_offset = 0
+                self.direction = 1
+                
 
     def is_out_of_game(self) -> bool:
         return self.x < -settings.LOG_WIDTH
