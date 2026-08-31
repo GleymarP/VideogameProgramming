@@ -32,7 +32,9 @@ class Ball:
         self.active = True
 
         self.stuck = False
-        self.stuck_offset_x = 0.0        
+        self.stuck_offset_x = 0.0   
+
+        self.heavy = False     
 
     def get_collision_rect(self) -> pygame.Rect:
         return pygame.Rect(self.x, self.y, self.width, self.height)
