@@ -48,15 +48,33 @@ class PlayState(BaseState):
         self.paddle.update(dt)
 
         for ball in self.balls:
-            ball.update(dt)
-            ball.solve_world_boundaries()
+            if getattr(ball, "stuck" , False):
+                ball.x = self.paddle.x + ball.stuck_offset_x
+                ball.y = self.paddle.y - ball.height
+
+                if ball.x < 0:
+                    ball.x = 0
+                elif ball.x + ball.width > settings.VIRTUAL_WIDTH:
+                    ball.x = settings.VIRTUAL_WIDTH - ball.width
+
+            else:   
+                ball.update(dt)
+                ball.solve_world_boundaries()
 
             # Check collision with the paddle
             if ball.collides(self.paddle):
                 settings.SOUNDS["paddle_hit"].stop()
                 settings.SOUNDS["paddle_hit"].play()
-                ball.rebound(self.paddle)
-                ball.push(self.paddle)
+
+                if self.paddle.sticky:
+                    ball.stuck = True
+                    ball.stuck_offset_x = ball.x - self.paddle.x
+                    ball.vx = 0
+                    ball.vy = 0
+                    ball.y = self.paddle.y - ball.height
+                else:
+                    ball.rebound(self.paddle)
+                    ball.push(self.paddle)
 
             # Check collision with brickset
             if not ball.collides(self.brickset):
@@ -89,8 +107,10 @@ class PlayState(BaseState):
             # Chance to generate two more balls
             if random.random() < 0.1:
                 r = brick.get_collision_rect()
+                powerup_random = random.choice(["TwoMoreBall", "BallCapture"])
+
                 self.powerups.append(
-                    self.powerups_abstract_factory.get_factory("TwoMoreBall").create(
+                    self.powerups_abstract_factory.get_factory(powerup_random).create(
                         r.centerx - 8, r.centery - 8
                     )
                 )
@@ -182,6 +202,18 @@ class PlayState(BaseState):
             powerup.render(surface)
 
     def on_input(self, input_id: str, input_data: InputData) -> None:
+        stuck_balls = [b for b in self.balls if getattr(b, "stuck", False)]
+        if input_id == "pause" and input_data.pressed and len(stuck_balls) > 0:
+            settings.SOUNDS["selected"].stop()
+            settings.SOUNDS["selected"].play()
+
+            for ball in stuck_balls:
+                ball.stuck = False
+                ball.vy = -150
+                center_offset = (ball.x + ball.width / 2) - (self.paddle.x + self.paddle.width /2)
+                ball.vx = center_offset * 5
+            return
+        
         if input_id == "move_left":
             if input_data.pressed:
                 self.paddle.vx = -settings.PADDLE_SPEED
