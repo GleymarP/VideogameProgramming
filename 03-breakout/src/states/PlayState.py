@@ -19,6 +19,7 @@ from gale.text import render_text
 
 import settings
 import src.powerups
+from src.Projectile import Projectile
 
 
 class PlayState(BaseState):
@@ -43,9 +44,26 @@ class PlayState(BaseState):
             settings.SOUNDS["paddle_hit"].play()
 
         self.powerups_abstract_factory = AbstractFactory("src.powerups")
+        self.projectiles = []
 
     def update(self, dt: float) -> None:
         self.paddle.update(dt)
+
+        for projectile in self.projectiles:
+            projectile.update(dt)
+        
+        for proj in self.projectiles:
+            if not proj.active:
+                continue
+
+            brick = self.brickset.get_colliding_brick(proj.get_collision_rect())
+
+            if brick is not None and not brick.broken:
+                brick.hit()
+                self.score += brick.score()
+                proj.active = False
+                    
+        self.projectiles = [p for p in self.projectiles if p.active]
 
         for ball in self.balls:
             if getattr(ball, "stuck" , False):
@@ -107,10 +125,10 @@ class PlayState(BaseState):
             # Chance to generate two more balls
             if random.random() < 0.1:
                 r = brick.get_collision_rect()
-                powerup_random = random.choice(["TwoMoreBall", "BallCapture"])
+                powerup_random = random.choice(["TwoMoreBall", "BallCapture", "Cannons"])
 
                 self.powerups.append(
-                    self.powerups_abstract_factory.get_factory(powerup_random).create(
+                    self.powerups_abstract_factory.get_factory("Cannons").create(
                         r.centerx - 8, r.centery - 8
                     )
                 )
@@ -201,6 +219,9 @@ class PlayState(BaseState):
         for powerup in self.powerups:
             powerup.render(surface)
 
+        for projectile in self.projectiles:
+            projectile.render(surface)
+
     def on_input(self, input_id: str, input_data: InputData) -> None:
         stuck_balls = [b for b in self.balls if getattr(b, "stuck", False)]
         if input_id == "pause" and input_data.pressed and len(stuck_balls) > 0:
@@ -237,3 +258,16 @@ class PlayState(BaseState):
                 live_factor=self.live_factor,
                 powerups=self.powerups,
             )
+
+        if input_id == "fire" and input_data.pressed and getattr(self.paddle, "has_cannons", False):
+            if len(self.projectiles) == 0:
+                settings.SOUNDS["hurt"].stop()
+                settings.SOUNDS["hurt"].play()
+
+                left_cannon_x = self.paddle.x
+                right_cannon_x = self.paddle.x + self.paddle.width - 4
+                cannon_y = self.paddle.y - 12
+
+                self.projectiles.append(Projectile(left_cannon_x, cannon_y))
+                self.projectiles.append(Projectile(right_cannon_x, cannon_y))
+
