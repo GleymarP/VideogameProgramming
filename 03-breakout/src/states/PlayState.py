@@ -103,6 +103,9 @@ class PlayState(BaseState):
             if brick is None:
                 continue
 
+            if getattr(ball, "heavy", False) and brick.tier > 0:
+                brick.tier = 0
+
             brick.hit()
             self.score += brick.score()
             ball.rebound(brick)
@@ -125,10 +128,15 @@ class PlayState(BaseState):
             # Chance to generate two more balls
             if random.random() < 0.1:
                 r = brick.get_collision_rect()
-                powerup_random = random.choice(["TwoMoreBall", "BallCapture", "Cannons"])
+                powerup_pool = ["TwoMoreBall", "BallCapture", "Cannons"]
+
+                if self.level >= 2:
+                    powerup_pool.append("HeavyBall")
+
+                powerup_random = random.choice(powerup_pool)
 
                 self.powerups.append(
-                    self.powerups_abstract_factory.get_factory("Cannons").create(
+                    self.powerups_abstract_factory.get_factory(powerup_random).create(
                         r.centerx - 8, r.centery - 8
                     )
                 )
