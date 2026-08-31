@@ -19,7 +19,7 @@ class BallCapture(PowerUp):
         def desactive_glue():
             play_state.paddle.sticky = False
 
-        Timer.after(6.0, desactive_glue)
+        Timer.after(8.0, desactive_glue)
 
         self.active = False
 
