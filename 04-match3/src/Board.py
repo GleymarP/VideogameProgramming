@@ -29,7 +29,8 @@ class Board:
     def render(self, surface: pygame.Surface) -> None:
         for row in self.tiles:
             for tile in row:
-                tile.render(surface, self.x, self.y)
+                if tile is not None:
+                    tile.render(surface, self.x, self.y)
 
     def _is_match_generated(self, i: int, j: int, color: int) -> bool:
         if (

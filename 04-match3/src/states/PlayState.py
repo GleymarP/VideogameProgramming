@@ -8,7 +8,7 @@ alejandro.j.mujic4@gmail.com
 This file contains the class PlayState.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 
 import pygame
 
@@ -16,6 +16,8 @@ from gale.input_handler import InputData
 from gale.state import BaseState
 from gale.text import render_text
 from gale.timer import Timer
+
+from src.Tile import Tile
 
 import settings
 
@@ -27,12 +29,19 @@ class PlayState(BaseState):
         self.score = enter_params["score"]
 
         # Position in the grid which we are highlighting
-        self.board_highlight_i1 = -1
-        self.board_highlight_j1 = -1
-        self.board_highlight_i2 = -1
-        self.board_highlight_j2 = -1
+        #self.board_highlight_i1 = -1
+        #self.board_highlight_j1 = -1
+        #self.board_highlight_i2 = -1
+        #self.board_highlight_j2 = -1
 
-        self.highlighted_tile = False
+        self.dragging = False
+        self.dragged_tile = None
+        self.start_i = -1
+        self.start_j = -1
+        self.start_x = -1
+        self.start_y = -1
+
+        #self.highlighted_tile = False
 
         self.active = True
 
@@ -77,13 +86,24 @@ class PlayState(BaseState):
             settings.SOUNDS["next-level"].play()
             self.state_machine.change("begin", level=self.level + 1, score=self.score)
 
+        if self.active and self.dragging and self.dragged_tile:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            mouse_x = mouse_x * settings.VIRTUAL_WIDTH // settings.WINDOW_WIDTH
+            mouse_y = mouse_y * settings.VIRTUAL_HEIGHT // settings.WINDOW_HEIGHT
+
+            self.dragged_tile.x = (mouse_x - self.board.x) - settings.TILE_SIZE // 2
+            self.dragged_tile.y = (mouse_y - self.board.y) - settings.TILE_SIZE // 2
+
     def render(self, surface: pygame.Surface) -> None:
         self.board.render(surface)
 
-        if self.highlighted_tile:
-            x = self.highlighted_j1 * settings.TILE_SIZE + self.board.x
-            y = self.highlighted_i1 * settings.TILE_SIZE + self.board.y
-            surface.blit(self.tile_alpha_surface, (x, y))
+        #if self.highlighted_tile:
+            #x = self.highlighted_j1 * settings.TILE_SIZE + self.board.x
+            #y = self.highlighted_i1 * settings.TILE_SIZE + self.board.y
+            #surface.blit(self.tile_alpha_surface, (x, y))
+
+        if self.dragging and self.dragged_tile:
+            self.dragged_tile.render(surface, self.board.x, self.board.y)
 
         surface.blit(self.text_alpha_surface, (16, 16))
         render_text(
@@ -127,73 +147,118 @@ class PlayState(BaseState):
         if not self.active:
             return
 
-        if input_id == "click" and input_data.pressed:
+        if input_id == "click":
             pos_x, pos_y = input_data.position
             pos_x = pos_x * settings.VIRTUAL_WIDTH // settings.WINDOW_WIDTH
             pos_y = pos_y * settings.VIRTUAL_HEIGHT // settings.WINDOW_HEIGHT
-            i = (pos_y - self.board.y) // settings.TILE_SIZE
-            j = (pos_x - self.board.x) // settings.TILE_SIZE
 
-            if 0 <= i < settings.BOARD_HEIGHT and 0 <= j <= settings.BOARD_WIDTH:
-                if not self.highlighted_tile:
-                    self.highlighted_tile = True
-                    self.highlighted_i1 = i
-                    self.highlighted_j1 = j
-                else:
-                    self.highlighted_i2 = i
-                    self.highlighted_j2 = j
-                    di = abs(self.highlighted_i2 - self.highlighted_i1)
-                    dj = abs(self.highlighted_j2 - self.highlighted_j1)
+            if input_data.pressed:
+                i = (pos_y - self.board.y) // settings.TILE_SIZE
+                j = (pos_x - self.board.x) // settings.TILE_SIZE
+
+                if 0 <= i < settings.BOARD_HEIGHT and 0 <= j < settings.BOARD_WIDTH and self.board.tiles[i][j] is not None:
+                    self.dragging = True
+                    self.start_i = i
+                    self.start_j = j
+                    self.dragged_tile = self.board.tiles[i][j]
+                    self.start_x = self.dragged_tile.x
+                    self.start_y = self.dragged_tile.y
+
+            elif not input_data.pressed and self.dragging:
+                self.dragging = False
+
+                target_i = (pos_y - self.board.y) // settings.TILE_SIZE
+                target_j = (pos_x - self.board.x) // settings.TILE_SIZE
+
+                if 0 <= target_i < settings.BOARD_HEIGHT and 0 <= target_j < settings.BOARD_WIDTH:
+                    di = abs(target_i - self.start_i)
+                    dj = abs(target_j - self.start_j)
 
                     if di <= 1 and dj <= 1 and di != dj:
                         self.active = False
-                        tile1 = self.board.tiles[self.highlighted_i1][
-                            self.highlighted_j1
-                        ]
-                        tile2 = self.board.tiles[self.highlighted_i2][
-                            self.highlighted_j2
-                        ]
+                        tile1 = self.dragged_tile
+                        tile2 = self.board.tiles[target_i][target_j]
+
+                        target_x1 = target_j * settings.TILE_SIZE
+                        target_y1 = target_i * settings.TILE_SIZE
+                        target_x2 = self.start_x
+                        target_y2 = self.start_y
+
 
                         def arrive():
-                            tile1 = self.board.tiles[self.highlighted_i1][
-                                self.highlighted_j1
-                            ]
-                            tile2 = self.board.tiles[self.highlighted_i2][
-                                self.highlighted_j2
-                            ]
                             (
-                                self.board.tiles[tile1.i][tile1.j],
-                                self.board.tiles[tile2.i][tile2.j],
+                                self.board.tiles[self.start_i][self.start_j],
+                                self.board.tiles[target_i][target_j],
                             ) = (
-                                self.board.tiles[tile2.i][tile2.j],
-                                self.board.tiles[tile1.i][tile1.j],
+                                self.board.tiles[target_i][target_j],
+                                self.board.tiles[self.start_i][self.start_j],
                             )
                             tile1.i, tile1.j, tile2.i, tile2.j = (
-                                tile2.i,
-                                tile2.j,
-                                tile1.i,
-                                tile1.j,
+                                target_i,
+                                target_j,
+                                self.start_i,
+                                self.start_j,
                             )
-                            self._calculate_matches([tile1, tile2])
+                            self._calculate_matches([tile1, tile2], swapped_tiles=(tile1, tile2))
 
                         # Swap tiles
                         Timer.tween(
                             0.25,
                             [
-                                (tile1, {"x": tile2.x, "y": tile2.y}),
-                                (tile2, {"x": tile1.x, "y": tile1.y}),
+                                (tile1, {"x": target_x1, "y": target_y1}),
+                                (tile2, {"x": target_x2, "y": target_y2}),
                             ],
                             on_finish=arrive,
                         )
 
-                    self.highlighted_tile = False
+                        self.dragged_tile = None
+                        return
 
-    def _calculate_matches(self, tiles: List) -> None:
+                Timer.tween(
+                    0.15,
+                    [(self.dragged_tile, {"x": self.start_x, "y": self.start_y})]
+
+                )
+                self.dragged_tile = None
+
+    def _calculate_matches(self, tiles: List, swapped_tiles: Optional[Tuple[Tile, Tile]] = None) -> None:
         matches = self.board.calculate_matches_for(tiles)
 
         if matches is None:
-            self.active = True
-            return
+            if swapped_tiles is not None:
+                tile1, tile2 = swapped_tiles
+
+                settings.SOUNDS["error"].stop()
+                settings.SOUNDS["error"].play()
+
+                def revert_logic():
+                    (
+                        self.board.tiles[tile1.i][tile1.j],
+                        self.board.tiles[tile2.i][tile2.j],
+                    ) = (
+                        self.board.tiles[tile2.i][tile2.j],
+                        self.board.tiles[tile1.i][tile1.j],
+                    )
+                    tile1.i, tile1.j, tile2.i, tile2.j = (
+                        tile2.i,
+                        tile2.j,
+                        tile1.i,
+                        tile1.j,
+                    )
+
+                    self.active = True
+                Timer.tween(
+                    0.25,
+                    [
+                        (tile1, {"x": tile2.x, "y":tile2.y}),
+                        (tile2, {"x": tile1.x, "y": tile1.y}),
+                    ],
+                    on_finish=revert_logic,
+                ) 
+                return
+            else:
+                self.active = True
+                return
 
         settings.SOUNDS["match"].stop()
         settings.SOUNDS["match"].play()
@@ -209,6 +274,7 @@ class PlayState(BaseState):
             0.25,
             falling_tiles,
             on_finish=lambda: self._calculate_matches(
-                [item[0] for item in falling_tiles]
+                [item[0] for item in falling_tiles],
+                swapped_tiles=None
             ),
         )
