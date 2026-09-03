@@ -24,8 +24,8 @@ class Board:
         self.y = y
         self.matches: List[List[Tile]] = []
         self.tiles: List[List[Tile]] = []
-        self._initialize_tiles()
-
+        self.recreate_board()
+       
     def render(self, surface: pygame.Surface) -> None:
         for row in self.tiles:
             for tile in row:
@@ -209,3 +209,39 @@ class Board:
                     tweens.append((tile, {"y": tile.i * settings.TILE_SIZE}))
 
         return tweens
+
+    def recreate_board(self) -> None:
+        self._initialize_tiles()
+        while not self.has_possible_matches():
+            self._initialize_tiles()
+
+    def has_possible_matches(self) -> bool:
+        for i in range(settings.BOARD_HEIGHT):
+            for j in range(settings.BOARD_WIDTH):
+                if j < settings.BOARD_WIDTH - 1:
+                    self.tiles[i][j], self.tiles[i][j+1] = self.tiles[i][j+1], self.tiles[i][j]
+                    self.tiles[i][j].j, self.tiles[i][j+1].j = j, j + 1
+                    
+                    match_right = self.calculate_matches_for([self.tiles[i][j], self.tiles[i][j+1]])
+                    self.matches = [] 
+                    
+                    self.tiles[i][j], self.tiles[i][j+1] = self.tiles[i][j+1], self.tiles[i][j]
+                    self.tiles[i][j].j, self.tiles[i][j+1].j = j, j + 1
+                    
+                    if match_right is not None:
+                        return True
+
+                if i < settings.BOARD_HEIGHT - 1:
+                    self.tiles[i][j], self.tiles[i+1][j] = self.tiles[i+1][j], self.tiles[i][j]
+                    self.tiles[i][j].i, self.tiles[i+1][j].i = i, i + 1
+                    
+                    match_bottom = self.calculate_matches_for([self.tiles[i][j], self.tiles[i+1][j]])
+                    self.matches = []
+                   
+                    self.tiles[i][j], self.tiles[i+1][j] = self.tiles[i+1][j], self.tiles[i][j]
+                    self.tiles[i][j].i, self.tiles[i+1][j].i = i, i + 1
+                    
+                    if match_bottom is not None:
+                        return True
+        return False
+   

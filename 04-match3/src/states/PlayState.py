@@ -28,20 +28,12 @@ class PlayState(BaseState):
         self.board = enter_params["board"]
         self.score = enter_params["score"]
 
-        # Position in the grid which we are highlighting
-        #self.board_highlight_i1 = -1
-        #self.board_highlight_j1 = -1
-        #self.board_highlight_i2 = -1
-        #self.board_highlight_j2 = -1
-
         self.dragging = False
         self.dragged_tile = None
         self.start_i = -1
         self.start_j = -1
         self.start_x = -1
         self.start_y = -1
-
-        #self.highlighted_tile = False
 
         self.active = True
 
@@ -96,12 +88,7 @@ class PlayState(BaseState):
 
     def render(self, surface: pygame.Surface) -> None:
         self.board.render(surface)
-
-        #if self.highlighted_tile:
-            #x = self.highlighted_j1 * settings.TILE_SIZE + self.board.x
-            #y = self.highlighted_i1 * settings.TILE_SIZE + self.board.y
-            #surface.blit(self.tile_alpha_surface, (x, y))
-
+             
         if self.dragging and self.dragged_tile:
             self.dragged_tile.render(surface, self.board.x, self.board.y)
 
@@ -258,6 +245,8 @@ class PlayState(BaseState):
                 return
             else:
                 self.active = True
+                if not self.board.has_possible_matches():
+                    self.board.recreate_board()
                 return
 
         settings.SOUNDS["match"].stop()
