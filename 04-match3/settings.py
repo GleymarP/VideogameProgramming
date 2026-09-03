@@ -37,6 +37,7 @@ BOARD_WIDTH = 8
 BOARD_HEIGHT = 8
 
 TILE_SIZE = 32
+POWER_SIZE = 24
 
 NUM_VARIETIES = 6
 NUM_COLORS = 18
@@ -53,6 +54,8 @@ TEXTURES = {
         BASE_DIR / "assets" / "graphics" / "background.png"
     ),
     "tiles": pygame.image.load(BASE_DIR / "assets" / "graphics" / "match3.png"),
+    "color" : pygame.image.load(BASE_DIR / "assets" / "graphics" / "sweets.png"),
+    "line" : pygame.image.load(BASE_DIR / "assets" / "graphics" / "mint.png"),
 }
 
 FRAMES = {"tiles": generate_tile_frames(TEXTURES["tiles"])}
