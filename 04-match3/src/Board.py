@@ -25,7 +25,7 @@ class Board:
         self.matches: List[List[Tile]] = []
         self.tiles: List[List[Tile]] = []
         self.recreate_board()
-       
+
     def render(self, surface: pygame.Surface) -> None:
         for row in self.tiles:
             for tile in row:
@@ -147,13 +147,32 @@ class Board:
 
         delattr(self, "in_match")
         delattr(self, "in_stack")
-
         return self.matches if len(self.matches) > 0 else None
 
-    def remove_matches(self) -> None:
+    def remove_matches(self, spawn_pos: Optional[Tuple[int, int]] = None) -> None:
         for match in self.matches:
-            for tile in match:
-                self.tiles[tile.i][tile.j] = None
+            match_len = len(match)
+
+            if spawn_pos is not None and match_len >= 4:
+                power_type = "color" if match_len >= 5 else "line"
+
+                spawn_tile = None
+                if spawn_pos:
+                    for tile in match:
+                        if (tile.i, tile.j) == spawn_pos:
+                            spawn_tile = tile
+                            break
+                if not spawn_tile:
+                    spawn_tile = match[0]
+
+                for tile in match:
+                    if tile == spawn_tile:
+                        tile.power_up = power_type
+                    else:
+                        self.tiles[tile.i][tile.j] = None
+            else:
+                for tile in match:
+                    self.tiles[tile.i][tile.j] = None
 
         self.matches = []
 
@@ -244,4 +263,51 @@ class Board:
                     if match_bottom is not None:
                         return True
         return False
-   
+
+    def expand_powerup_matches(self) -> None:
+        all_matched = set()
+        for match in self.matches:
+            all_matched.update(match)
+
+        processed_powerups = set()
+
+        while True:
+            powerups_to_process = [
+                tile for tile in all_matched
+                if getattr(tile, "power_up", None) is not None and tile not in processed_powerups
+            ]
+
+            if not powerups_to_process:
+                break
+
+            extra_tiles = set()
+            
+            for tile in powerups_to_process:
+                processed_powerups.add(tile)
+
+                if tile.power_up == "line":
+                   
+                    for j in range(settings.BOARD_WIDTH):
+                        t = self.tiles[tile.i][j]
+                        if t is not None:
+                            extra_tiles.add(t)
+                   
+                    for i in range(settings.BOARD_HEIGHT):
+                        t = self.tiles[i][tile.j]
+                        if t is not None:
+                            extra_tiles.add(t)
+
+                elif tile.power_up == "color":
+                   
+                    target_color = tile.color
+                    for row in self.tiles:
+                        for board_tile in row:
+                            if board_tile is not None and board_tile.color == target_color:
+                                extra_tiles.add(board_tile)
+
+            new_additions = extra_tiles - all_matched
+            if not new_additions:
+                break
+
+            self.matches.append(list(new_additions))
+            all_matched.update(new_additions)

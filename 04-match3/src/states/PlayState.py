@@ -88,7 +88,7 @@ class PlayState(BaseState):
 
     def render(self, surface: pygame.Surface) -> None:
         self.board.render(surface)
-             
+
         if self.dragging and self.dragged_tile:
             self.dragged_tile.render(surface, self.board.x, self.board.y)
 
@@ -144,6 +144,14 @@ class PlayState(BaseState):
                 j = (pos_x - self.board.x) // settings.TILE_SIZE
 
                 if 0 <= i < settings.BOARD_HEIGHT and 0 <= j < settings.BOARD_WIDTH and self.board.tiles[i][j] is not None:
+                    clicked_tile = self.board.tiles[i][j]
+
+                    if clicked_tile.power_up is not None:
+                        self.active = False
+                        self.board.matches = [[clicked_tile]]
+                        self._calculate_matches([clicked_tile])
+                        return
+
                     self.dragging = True
                     self.start_i = i
                     self.start_j = j
@@ -186,7 +194,7 @@ class PlayState(BaseState):
                                 self.start_i,
                                 self.start_j,
                             )
-                            self._calculate_matches([tile1, tile2], swapped_tiles=(tile1, tile2))
+                            self._calculate_matches([tile1, tile2], swapped_tiles=(tile1, tile2), spawn_pos=(target_i, target_j))
 
                         # Swap tiles
                         Timer.tween(
@@ -208,7 +216,7 @@ class PlayState(BaseState):
                 )
                 self.dragged_tile = None
 
-    def _calculate_matches(self, tiles: List, swapped_tiles: Optional[Tuple[Tile, Tile]] = None) -> None:
+    def _calculate_matches(self, tiles: List, swapped_tiles: Optional[Tuple[Tile, Tile]] = None, spawn_pos :  Optional[Tuple[int, int]] = None) -> None:
         matches = self.board.calculate_matches_for(tiles)
 
         if matches is None:
@@ -245,9 +253,18 @@ class PlayState(BaseState):
                 return
             else:
                 self.active = True
-                if not self.board.has_possible_matches():
+
+                has_powerup = any(
+                    tile is not None and tile.power_up is not None
+                    for row in self.board.tiles
+                    for tile in row
+                )
+
+                if not self.board.has_possible_matches() and not has_powerup:
                     self.board.recreate_board()
                 return
+            
+        self.board.expand_powerup_matches()
 
         settings.SOUNDS["match"].stop()
         settings.SOUNDS["match"].play()
@@ -255,7 +272,7 @@ class PlayState(BaseState):
         for match in matches:
             self.score += len(match) * 50
 
-        self.board.remove_matches()
+        self.board.remove_matches(spawn_pos = spawn_pos)
 
         falling_tiles = self.board.get_falling_tiles()
 
@@ -264,6 +281,7 @@ class PlayState(BaseState):
             falling_tiles,
             on_finish=lambda: self._calculate_matches(
                 [item[0] for item in falling_tiles],
-                swapped_tiles=None
+                swapped_tiles=None,
+                spawn_pos = None
             ),
         )
