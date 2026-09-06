@@ -44,6 +44,20 @@ def pickup_red_coin(coin: GameItem, player: Player):
 def pickup_yellow_coin(coin: GameItem, player: Player):
     pickup_coin(coin, player, 50, 54, random.uniform(20, 25))
 
+def hit_special_block (block: GameItem, player: Player):
+    if not getattr(block, "has_spawned_key", False):
+        block.has_spawned_key = True
+        block.frame_index = 50
+        block.game_level.spawn_key(block.x, block.y)
+
+def pickup_key(key: GameItem, player: Player):
+    key.active = False
+    settings.SOUNDS["pickup_coin"].play()
+    key.game_level.is_completed = True
+
+    for item in key.game_level.items:
+        if getattr(item, "consumable", False):
+            item.consumable = False
 
 ITEMS: Dict[str, Dict[int, Dict[str, Any]]] = {
     "coins": {
@@ -70,6 +84,22 @@ ITEMS: Dict[str, Dict[int, Dict[str, Any]]] = {
             "consumable": True,
             "collidable": True,
             "on_consume": pickup_yellow_coin,
-        },
+        },       
+    },
+    "special_block" : {
+        49: {
+            "texture_id": "tiles",
+            "consumable": False,
+            "collidable": True,
+            "on_collide": hit_special_block,
+        }
+    },
+    "key" : {
+        0:{
+            "texture_id": "key",
+            "consumable": True,
+            "collidable": True,
+            "on_consume": pickup_key,
+        }   
     }
 }

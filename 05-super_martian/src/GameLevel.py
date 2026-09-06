@@ -29,6 +29,7 @@ class GameLevel:
         self.tilemap = load_tiled_map(settings.TILEMAPS[num_level])
         self.creatures = []
         self.items = []
+        self.is_completed = False
 
         for obj in self.tilemap.object_layers.get("creatures", []):
             self.add_creature(
@@ -59,7 +60,9 @@ class GameLevel:
         item_name = item_data.pop("item_name")
         definition = items.ITEMS[item_name][item_data["frame_index"]]
         definition.update(item_data)
-        self.items.append(GameItem(**definition))
+        new_item = GameItem(**definition)
+        new_item.game_level = self
+        self.items.append(new_item)
 
     def add_creature(self, creature_data: Dict[str, Any]) -> None:
         definition = creatures.CREATURES[creature_data["tile_index"]]
@@ -121,6 +124,32 @@ class GameLevel:
             )
 
         self._schedule_flying_creature_spawn()
+
+    def spawn_key(self, x: float, y: float) -> None:
+  
+        key_definition = items.ITEMS["key"][0].copy()
+        key = GameItem(
+            x=x, 
+            y=y, 
+            width=16, 
+            height=16,  
+            frame_index = 0,
+            **key_definition
+        )
+     
+        key.game_level = self
+        self.items.append(key)
+
+        def make_consumable():
+            key.consumable = True
+
+        key.consumable = False
+        settings.SOUNDS["keys"].play()
+        Timer.tween(
+            0.4,
+            [(key, {"y": y - 16})], 
+            on_finish=make_consumable
+        )
 
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect(0, 0, self.tilemap.pixel_width, self.tilemap.pixel_height)
