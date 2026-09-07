@@ -75,7 +75,15 @@ class Projectile:
     def render(
         self, surface: pygame.Surface, offset_x: float = 0, offset_y: float = 0
     ) -> None:
-        self.obj.render(surface, offset_x, offset_y)
+
+        if hasattr(self, 'image') and self.image is not None:
+            center_x = self.obj.x + self.obj.width/2 + offset_x
+            center_y = self.obj.y + self.obj.height/2 + offset_y
+            rect = self.image.get_rect(center=(center_x, center_y))
+            surface.blit(self.image, rect)
+
+        else:
+            self.obj.render(surface, offset_x, offset_y)
 
     def collides(self, target: Any) -> bool:
         return self.get_collision_rect().colliderect(target.get_collision_rect())

@@ -14,6 +14,7 @@ from typing import Any, Callable, List, Optional, TypeVar
 import pygame
 
 from gale.tilemap import TileMap
+from gale.timer import Timer
 
 import settings
 from src.definitions.entity import ENTITY_DEFS
@@ -84,11 +85,13 @@ class Room:
         self,
         player: TypeVar("Player"),
         on_game_over: Callable[[], None],
+        dungeon: Any,
     ) -> None:
         # Reference to player for collisions, etc.
         self.player = player
         self.on_game_over = on_game_over
-
+        self.dungeon = dungeon
+        
         self.width = settings.MAP_WIDTH
         self.height = settings.MAP_HEIGHT
 
@@ -252,6 +255,40 @@ class Room:
                 player.change_state("pot-lift", pot=obj)
                 return
 
+    def interact_adjacent(self, player: TypeVar("Player")):
+        player_col = int((player.x + player.width / 2) // settings.TILE_SIZE)
+        player_row = int((player.y + player.height / 2) // settings.TILE_SIZE)
+
+        for obj in self.objects:
+            if not getattr(obj, "interactable", False):
+                continue
+            obj_col = int((obj.x + obj.width / 2) // settings.TILE_SIZE)
+            obj_row = int((obj.y + obj.height / 2) // settings.TILE_SIZE)
+            adjacent = (
+                (player.direction == "right" and obj_row == player_row and obj_col == player_col + 1)
+                or (player.direction == "left" and obj_row == player_row and obj_col == player_col - 1)
+                or (player.direction == "up" and obj_col == player_col and obj_row == player_row - 1)
+                or (player.direction == "down" and obj_col == player_col and obj_row == player_row + 1)
+            )
+            
+            if adjacent:                
+                if obj.on_interact:
+                    obj.on_interact(player, obj, self)
+
+                floating_bow = GameObject(GAME_OBJECT_DEFS["bow"], obj.x, obj.y)
+                self.objects.append(floating_bow)
+                   
+                Timer.tween(
+                    0.7,
+                    [(floating_bow, {"y": obj.y - 48})],
+                    on_finish=lambda: self._finish_bow_chest_sequence(floating_bow, player)
+                )
+                return
+            
+    def _finish_bow_chest_sequence(self, floating_bow: GameObject, player: Any) -> None:  
+        if floating_bow in self.objects:
+            self.objects.remove(floating_bow)
+
     def _generate_walls_and_floors(self) -> None:
         """
         Generates the walls and floors of the room, randomizing the various
@@ -350,7 +387,19 @@ class Room:
                     self.objects.append(
                         GameObject(GAME_OBJECT_DEFS["pot"], x * 16, y * 16)
                     )
-
+        
+        prob = min(0.15 + 0.1 * self.dungeon.rooms_visited, 0.8)
+        if not self.dungeon.chest_opened and not self.dungeon.chest_generated and random.random() < prob:
+            chest_col = random.randint(2, self.width - 1)
+            chest_row = random.randint(2, self.height - 1)
+            
+            chest = GameObject(
+                GAME_OBJECT_DEFS["chest"],
+                chest_col * settings.TILE_SIZE,
+                chest_row * settings.TILE_SIZE,
+            )
+            self.objects.append(chest)
+          
     def render(
         self,
         surface: pygame.Surface,

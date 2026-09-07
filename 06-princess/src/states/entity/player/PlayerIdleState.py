@@ -16,6 +16,8 @@ from gale.state import StateMachine
 
 from src.states.entity.BaseEntityState import BaseEntityState
 
+from src.Bow import Bow
+
 
 class PlayerIdleState(BaseEntityState):
     def __init__(
@@ -39,9 +41,18 @@ class PlayerIdleState(BaseEntityState):
             self.entity.change_state("swing-sword")
             return
 
+        if self.entity.fire_requested and self.entity.has_bow:
+            self.entity.fire_requested = False
+            arrow = Bow.fire(self.entity.x, self.entity.y, self.entity.direction, self.entity)
+            self.dungeon.current_room.projectiles.append(arrow)
+            return
+
         if self.entity.interact_requested:
             self.entity.interact_requested = False
-            self.dungeon.current_room.take_adjacent_pot(self.entity)
+            room = self.dungeon.current_room
+
+            room.interact_adjacent(self.entity)
+            room.take_adjacent_pot(self.entity)
 
             if self.entity.state_machine.current is not self:
                 return

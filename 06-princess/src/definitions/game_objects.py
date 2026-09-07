@@ -17,6 +17,17 @@ def _pickup_heart(player, obj) -> None:
     player.heal(2)
     settings.SOUNDS["heart-taken"].play()
 
+def _open_chest(player, obj, room) -> None:
+    if obj.state == "closed":
+        obj.state = "open"
+
+        player.has_bow = True
+        room.dungeon.chest_opened = True
+        room.dungeon.chest_generated = False
+        
+
+        settings.SOUNDS["chest_open"].play()
+
 
 GAME_OBJECT_DEFS: Dict[str, Dict[str, Any]] = {
     "switch": {
@@ -60,5 +71,34 @@ GAME_OBJECT_DEFS: Dict[str, Dict[str, Any]] = {
             "default": {"frame": 5},
         },
         "on_consume": _pickup_heart,
+    },
+    "chest": {
+        "type": "chest",
+        "texture" : "tiles",
+        "frame": 167,
+        "width": 16,
+        "height" : 16,
+        "solid": True,
+        "consumable": False,
+        "default_state": "closed",
+        "interactable" : True,
+        "states": {
+            "closed": {"frame": 167 },
+            "open": {"frame": 128},
+        },
+        "on_interact": _open_chest,
+    },
+    "bow":{
+        "type": "bow",
+        "texture": "bow-arrows",
+        "frame": 1,
+        "width": 16,
+        "height": 16,
+        "solid": False,
+        "consumable": False,
+        "default_state": "default",
+        "states": {
+            "default": {"frame": 1},
+        },
     },
 }

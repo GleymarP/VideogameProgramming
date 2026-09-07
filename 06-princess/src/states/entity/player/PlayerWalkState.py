@@ -18,6 +18,8 @@ import settings
 from src.states.entity.BaseEntityState import BaseEntityState
 from src.states.entity.movement import move_and_bump
 
+from src.Bow import Bow
+
 
 class PlayerWalkState(BaseEntityState):
     def __init__(
@@ -42,10 +44,19 @@ class PlayerWalkState(BaseEntityState):
             player.change_state("swing-sword")
             return
 
+        if player.fire_requested and player.has_bow:
+            player.fire_requested = False
+            arrow = Bow.fire(player.x, player.y, player.direction, player)
+            self.dungeon.current_room.projectiles.append(arrow)
+            return
+
         if player.interact_requested:
             player.interact_requested = False
-            self.dungeon.current_room.take_adjacent_pot(player)
-
+            room = self.dungeon.current_room
+            
+            room.interact_adjacent(player)
+            room.take_adjacent_pot(player)
+    
             if player.state_machine.current is not self:
                 return
 

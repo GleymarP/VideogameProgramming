@@ -39,6 +39,9 @@ class GameObject:
         self.consumable = definition.get("consumable", False)
         self.on_consume = definition.get("on_consume") or (lambda player, obj: None)
 
+        self.interactable = definition.get("interactable", False)
+        self.on_interact = definition.get("on_interact") or (lambda player, obj: None)
+
         # An object could be taken or not.
         self.takeable = definition.get("takeable", False)
         self.taken = False
