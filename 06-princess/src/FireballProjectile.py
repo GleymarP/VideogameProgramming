@@ -23,7 +23,6 @@ class FireballProjectile(Projectile):
         self.damage = 1  
         self.owner = None 
   
-   
     def update(self, dt: float):
         if self.dead:
             return
@@ -39,7 +38,6 @@ class FireballProjectile(Projectile):
     def render(self, surface: pygame.Surface, offset_x: float = 0, offset_y: float = 0) -> None:
         if self.obj:
             self.obj.render(surface, offset_x, offset_y)
-
 
 
 class FireballFactory:
