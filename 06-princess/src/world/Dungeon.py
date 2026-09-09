@@ -12,15 +12,13 @@ import math
 from typing import Callable, TypeVar
 
 from src.world.BossRoom import BossRoom
+from src.world.Room import Room
 
 import pygame
-
-from gale.timer import Timer
-
 import settings
-from src.world.Room import Room
 import random
 
+from gale.timer import Timer
 
 class Dungeon:
     def __init__(
