@@ -93,6 +93,8 @@ TEXTURES = {
     "bow-arrows": pygame.image.load(
         BASE_DIR / "assets" / "graphics" / "bow_arrows.png"
     ),
+    "boss-walk": pygame.image.load( BASE_DIR / "assets" / "graphics" / "princess_boss.png"),
+    "fireball": pygame.image.load(BASE_DIR / "assets" / "graphics" / "fireball.png")
 }
 
 # Used by Room's gale.tilemap.TileMap: TILE_* ids above are 1-based,
@@ -111,6 +113,8 @@ FRAMES = {
     "character-pot-lift": frames.generate_frames(TEXTURES["character-pot-lift"], 16, 32),
     "character-pot-walk": frames.generate_frames(TEXTURES["character-pot-walk"], 16, 32),
     "bow-arrows" : frames.generate_frames(TEXTURES["bow-arrows"], 16, 16),
+    "boss-walk" : frames.generate_frames(TEXTURES["boss-walk"], 32, 32),
+    "fireball" : frames.generate_frames(TEXTURES["fireball"], 16, 16),
 }
 
 
@@ -141,13 +145,13 @@ SOUNDS = {
     ),
     "pot-wall": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "pot_wall.wav"),
     "chest_open": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "chest_open.wav"),
-    "arrow": pygame.mixer.Sound(BASE_DIR / "assets" / "sounds" / "arrow.wav"),
 }
 
 MUSIC = {
     "start": str(BASE_DIR / "assets" / "sounds" / "start_music.mp3"),
     "dungeon": str(BASE_DIR / "assets" / "sounds" / "dungeon_music.mp3"),
     "game-over": str(BASE_DIR / "assets" / "sounds" / "game_over_music.mp3"),
+    "boss": str(BASE_DIR / "assets" / "sounds" / "boss.wav"),
 }
 
 COLOR_TITLE_SHADOW = (34, 34, 34)
