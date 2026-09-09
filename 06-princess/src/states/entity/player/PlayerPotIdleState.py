@@ -37,9 +37,10 @@ class PlayerPotIdleState(BaseEntityState):
 
         if self.entity.interact_requested:
             self.entity.interact_requested = False
-            self.dungeon.current_room.projectiles.append(
-                Projectile(self.pot, self.entity.direction)
-            )
+            proj = Projectile(self.pot, self.entity.direction)
+            proj.owner = self.entity
+
+            self.dungeon.current_room.projectiles.append(proj)
             self.entity.change_state("idle")
             return
 

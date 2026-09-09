@@ -11,12 +11,15 @@ This file contains the class Dungeon.
 import math
 from typing import Callable, TypeVar
 
+from src.world.BossRoom import BossRoom
+
 import pygame
 
 from gale.timer import Timer
 
 import settings
 from src.world.Room import Room
+import random
 
 
 class Dungeon:
@@ -30,8 +33,10 @@ class Dungeon:
         
         self.rooms_visited = 0
         self.chest_opened = False
-        self.chest_generated = False
 
+        self.boss_defeated = False
+        self.boss_room_created = False
+        
         # Current room we're operating in.
         self.current_room = Room(self.player, self.on_game_over, self)
 
@@ -52,7 +57,29 @@ class Dungeon:
         """
         self.shifting = True
         self.rooms_visited += 1
-        self.next_room = Room(self.player, self.on_game_over, self)
+
+        is_boss_room = False
+
+        if getattr(self.player, "has_bow", False) and not self.boss_defeated and not self.boss_room_created:
+            if random.random() < 0.7:
+                is_boss_room = True
+                self.boss_room_created = True
+
+        if is_boss_room:
+            entry_dir = None
+            if shift_x > 0:
+                entry_dir = "left"
+            elif shift_x < 0:
+                entry_dir = "right"
+            elif shift_y > 0:
+                entry_dir = "up"
+            elif shift_y < 0:
+                entry_dir = "bottom"
+
+            self.next_room = BossRoom(self.player, self.on_game_over, self, entry_dir)
+
+        else:
+            self.next_room = Room(self.player, self.on_game_over, self)
 
         # Start all doors in next room as open until we get in.
         for doorway in self.next_room.doorways:

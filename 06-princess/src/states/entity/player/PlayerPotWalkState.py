@@ -44,9 +44,9 @@ class PlayerPotWalkState(BaseEntityState):
 
         if player.interact_requested:
             player.interact_requested = False
-            self.dungeon.current_room.projectiles.append(
-                Projectile(self.pot, player.direction)
-            )
+            proj = Projectile(self.pot, player.direction)
+            proj.owner = player
+            self.dungeon.current_room.projectiles.append(proj)
             player.change_state("idle")
             return
 

@@ -24,6 +24,8 @@ class Projectile:
         self.direction = direction
         self.distance = 0.0
         self.dead = False
+        self.owner = None
+        self.damage = 0
 
     def get_collision_rect(self) -> pygame.Rect:
         return self.obj.get_collision_rect()
@@ -81,7 +83,6 @@ class Projectile:
             center_y = self.obj.y + self.obj.height/2 + offset_y
             rect = self.image.get_rect(center=(center_x, center_y))
             surface.blit(self.image, rect)
-
         else:
             self.obj.render(surface, offset_x, offset_y)
 

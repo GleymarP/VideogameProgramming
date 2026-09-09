@@ -23,9 +23,7 @@ def _open_chest(player, obj, room) -> None:
 
         player.has_bow = True
         room.dungeon.chest_opened = True
-        room.dungeon.chest_generated = False
         
-
         settings.SOUNDS["chest_open"].play()
 
 

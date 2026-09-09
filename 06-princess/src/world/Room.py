@@ -64,7 +64,6 @@ _DOORWAY_ZONES = {
     ),
 }
 
-
 def _doorway_opening_for(
     rect: pygame.Rect, doorways_by_direction: dict
 ) -> Optional[pygame.Rect]:
@@ -74,7 +73,7 @@ def _doorway_opening_for(
         None if rect isn't near any doorway right now.
     """
     for direction, zone in _DOORWAY_ZONES.items():
-        if zone.colliderect(rect):
+        if zone.colliderect(rect) and direction in doorways_by_direction:
             return doorways_by_direction[direction].get_collision_rect()
 
     return None
@@ -186,9 +185,25 @@ class Room:
                     break
 
                 if not entity.dead and projectile.collides(entity):
-                    entity.damage(1)
-                    settings.SOUNDS["hit-enemy"].play()
-                    projectile.dead = True
+                    if hasattr(projectile, 'owner') and projectile.owner == self.player and hasattr(entity, 'hit_by_arrow'):
+                        entity.hit_by_arrow()
+                        projectile.dead = True
+                    elif hasattr(projectile, 'owner') and projectile.owner == entity:
+                        continue 
+                    else:
+                        entity.damage(1)
+                        settings.SOUNDS["hit-enemy"].play()
+                        projectile.dead = True
+
+            if not projectile.dead and hasattr(projectile, 'owner') and projectile.owner != self.player:
+                if self.player.collides(projectile.obj):
+                    if not self.player.invulnerable:
+                        settings.SOUNDS["hit-player"].play()
+                        self.player.damage(1)
+                        self.player.go_invulnerable(1.5)
+                        if self.player.health == 0:
+                            self.on_game_over()
+                        projectile.dead = True
 
             if projectile.dead:
                 self.projectiles.remove(projectile)
@@ -389,7 +404,7 @@ class Room:
                     )
         
         prob = min(0.15 + 0.1 * self.dungeon.rooms_visited, 0.8)
-        if not self.dungeon.chest_opened and not self.dungeon.chest_generated and random.random() < prob:
+        if not self.dungeon.chest_opened  and random.random() < prob:
             chest_col = random.randint(2, self.width - 1)
             chest_row = random.randint(2, self.height - 1)
             
