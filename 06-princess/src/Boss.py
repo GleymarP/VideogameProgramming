@@ -15,7 +15,7 @@ class Boss(Entity):
             width=32,  
             height=32,
             walk_speed=30, 
-            health=6,  
+            health=5,  
             animation_defs=boss_def["animations"],
             states={}
         )
@@ -23,7 +23,7 @@ class Boss(Entity):
         self.room = room
         self.offset_x = 0
         self.offset_y = 0
-        self.max_health = 6
+        self.max_health = 5
         
         self.inmune = True  
         self.inmunidad_timer = 0.0

@@ -155,12 +155,21 @@ class Room:
                 and self.player.collides(entity)
                 and not self.player.invulnerable
             ):
-                settings.SOUNDS["hit-player"].play()
-                self.player.damage(1)
-                self.player.go_invulnerable(1.5)
+                if type(entity).__name__ == "Boss":
+                    settings.SOUNDS["hit-player"].play()
+                    self.player.damage(2)
+                    self.player.go_invulnerable(1.5)
 
-                if self.player.health == 0:
-                    self.on_game_over()
+                    if self.player.health <= 0:
+                        self.on_game_over()
+
+                else:     
+                    settings.SOUNDS["hit-player"].play()
+                    self.player.damage(1)
+                    self.player.go_invulnerable(1.5)
+
+                    if self.player.health == 0:
+                        self.on_game_over()
 
         self.entities = [entity for entity in self.entities if not entity.dead]
 
@@ -199,10 +208,16 @@ class Room:
                 if self.player.collides(projectile.obj):
                     if not self.player.invulnerable:
                         settings.SOUNDS["hit-player"].play()
-                        self.player.damage(1)
-                        self.player.go_invulnerable(1.5)
-                        if self.player.health == 0:
+
+                        if getattr(projectile, 'type', None) == 'fireball' or type(projectile).__name__ == 'FireballProjectile':
+                            self.player.health = 0
                             self.on_game_over()
+                        else:
+                            self.player.damage(1)
+                            self.player.go_invulnerable(1.5)
+                            if self.player.health == 0:
+                                self.on_game_over()
+
                         projectile.dead = True
 
             if projectile.dead:
