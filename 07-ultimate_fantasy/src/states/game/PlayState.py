@@ -19,6 +19,8 @@ from gale.state import BaseState
 import settings
 from src.definitions.entity import ENTITY_DEFS
 from src.world.World import World
+from src.states.game.CharacterMenuState import CharacterMenuState
+from src.states.game.PauseMenuState import PauseMenuState
 
 # Human-friendly labels for World.current_region_name, shown on a save
 # slot's stat card (see SlotSelectState) instead of the raw internal key.
@@ -72,12 +74,15 @@ class PlayState(BaseState):
 
     def on_input(self, input_id: str, input_data: Any) -> None:
         if input_id == "pause" and input_data.pressed:
-            from src.states.game.PauseMenuState import PauseMenuState
-
             self.world.freeze_party()
             self.state_machine.push(PauseMenuState(self.state_machine), play_state=self)
             return
 
+        if input_id == "status" and input_data.pressed:
+            self.world.freeze_party()
+            self.state_machine.push(CharacterMenuState(self.state_machine), party=self.world.party)
+            return
+        
         self.world.on_input(input_id, input_data)
 
     def render(self, surface: pygame.Surface) -> None:

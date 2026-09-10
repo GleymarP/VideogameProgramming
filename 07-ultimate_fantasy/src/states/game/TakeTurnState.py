@@ -21,6 +21,8 @@ import pygame
 
 from gale.state import BaseState
 from gale.timer import Timer
+from src.entity.Enemy import Enemy
+from src.states.game.BattleMessageState import BattleMessageState
 
 import settings
 
@@ -29,44 +31,91 @@ class TakeTurnState(BaseState):
     def enter(self, battle_state: Any) -> None:
         self.battle_state = battle_state
         self.enemy_attacks_in_a_row = 0
-        self._take_party_turn(0)
+        self.waiting_for_action = False
+
+    def update(self, dt:float):
+        if self.waiting_for_action:
+            self._sync_rest_bars()
+            return
+
+        for character in self.battle_state.party.characters.values():
+            if not character.dead:
+                character.current_rest_time += dt
+                if character.current_rest_time >= character.rest_time:
+                    character.ready = True
+
+        for enemy in self.battle_state.enemies:
+            if not enemy.dead:
+                enemy.current_rest_time += dt
+                if enemy.current_rest_time >= enemy.rest_time:
+                    enemy.ready = True
+
+        self._sync_rest_bars()
+  
+        entity = self._get_next_ready_entity()
+        if entity is None:
+            return
+
+        self.waiting_for_action = True
+        self._start_turn(entity)
+
+    def _sync_rest_bars(self) -> None:
+        for character in self.battle_state.party.characters.values():
+            if not character.dead and hasattr(character, "rest_bar"):
+                character.rest_bar.value = min(character.current_rest_time, character.rest_time)
+                character.rest_bar.color = (
+                    pygame.Color(255, 255, 100) if character.ready
+                    else pygame.Color(200, 200, 40)
+                )
+
+        for enemy in self.battle_state.enemies:
+            if not enemy.dead and hasattr(enemy, "rest_bar"):
+                enemy.rest_bar.value = min(enemy.current_rest_time, enemy.rest_time)
+                enemy.rest_bar.color = (
+                    pygame.Color(255, 255, 100) if enemy.ready
+                    else pygame.Color(200, 200, 40)
+                )
+
+    def _get_next_ready_entity(self):
+    
+        candidates = []
+
+        for character in self.battle_state.party.characters.values():
+            if not character.dead and character.ready:
+                candidates.append(character)
+
+        for enemy in self.battle_state.enemies:
+            if not enemy.dead and enemy.ready:
+                candidates.append(enemy)
+
+        if not candidates:
+            return None
+
+        return max(candidates, key=lambda e: e.current_rest_time)
+
+    def _start_turn(self, entity) -> None:
+    
+        if isinstance(entity, Enemy):
+       
+            self._enemy_turn(entity)
+        else:
+            self.state_machine.push(
+                BattleMessageState(self.state_machine),
+                battle_state=self.battle_state,
+                message=f"Turn for {entity.name}! Select an action.",
+                on_close=lambda: self._prompt_action(entity),
+            )
+       
 
     def _party_keys(self):
         return sorted(self.battle_state.party.characters.keys())
 
-    # -- party turns ---------------------------------------------------
-
-    def _take_party_turn(self, index: int) -> None:
-        keys = self._party_keys()
-
-        if index >= len(keys):
-            self._take_enemy_turn(0)
-            return
-
-        character = self.battle_state.party.characters[keys[index]]
-
-        if character.dead:
-            self._take_party_turn(index + 1)
-            return
-
-        from src.states.game.BattleMessageState import BattleMessageState
-
-        self.state_machine.push(
-            BattleMessageState(self.state_machine),
-            battle_state=self.battle_state,
-            message=f"Turn for {character.name}! Select an action.",
-            on_close=lambda: self._prompt_action(character, index),
-        )
-
-    def _prompt_action(self, character: Any, index: int) -> None:
+    def _prompt_action(self, character: Any) -> None:
         from src.states.game.SelectActionState import SelectActionState
 
         def on_action_selected() -> None:
-            if all(enemy.dead for enemy in self.battle_state.enemies):
-                self._victory()
-            else:
-                self._take_party_turn(index + 1)
-
+            self._finish_turn(character)
+        
         self.state_machine.push(
             SelectActionState(self.state_machine),
             battle_state=self.battle_state,
@@ -76,19 +125,7 @@ class TakeTurnState(BaseState):
 
     # -- enemy turns ----------------------------------------------------
 
-    def _take_enemy_turn(self, index: int) -> None:
-        enemies = self.battle_state.enemies
-
-        if index >= len(enemies):
-            self._take_party_turn(0)
-            return
-
-        enemy = enemies[index]
-
-        if enemy.dead:
-            self._take_enemy_turn(index + 1)
-            return
-
+    def _enemy_turn(self, enemy) -> None:
         self.enemy_attacks_in_a_row += 1
         action = random.choice(enemy.actions)
 
@@ -131,10 +168,10 @@ class TakeTurnState(BaseState):
                 and enemy.klass == "boss"
                 and random.randint(1, 3) == 1
             ):
-                self._take_enemy_turn(index)
+                self._enemy_turn(enemy)
             else:
                 self.enemy_attacks_in_a_row = 0
-                self._take_enemy_turn(index + 1)
+                self._finish_turn(enemy)
 
         self.state_machine.push(
             BattleMessageState(self.state_machine),
@@ -142,6 +179,22 @@ class TakeTurnState(BaseState):
             message=message,
             on_close=on_message_close,
         )
+
+    def _finish_turn(self, entity) -> None:
+        entity.ready = False
+        entity.current_rest_time = 0.0  
+
+        if all(e.dead for e in self.battle_state.enemies):
+            self._victory()
+            return
+
+        if all(c.dead for c in self.battle_state.party.characters.values()):
+            self._faint()
+            return
+
+        self.waiting_for_action = False
+
+
 
     # -- victory / experience --------------------------------------------
 

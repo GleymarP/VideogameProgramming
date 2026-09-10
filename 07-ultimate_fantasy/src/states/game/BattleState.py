@@ -15,7 +15,7 @@ opening dialogue -> BattleMenuState turn loop.
 
 import math
 import random
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import pygame
 
@@ -33,6 +33,7 @@ from src.definitions.entity import (
 from src.entity.Enemy import Enemy
 from src.gui.Panel import Panel
 from src.states.entity.EnemyBattleState import EnemyBattleState
+from src.states.game.TakeTurnState import TakeTurnState
 
 TILE_IDS = settings.TILE_IDS
 
@@ -60,6 +61,14 @@ class BattleState(BaseState):
 
         self._create_bars()
 
+        for character in self.party.characters.values():
+            if not character.dead:
+                character.current_rest_time = random.uniform(0, character.rest_time * 0.5)
+                character.ready = False
+        for enemy in self.enemies:
+            enemy.current_rest_time = random.uniform(0, enemy.rest_time * 0.5)
+            enemy.ready = False
+                
     def exit(self) -> None:
         settings.stop_music("battle")
         self.on_exit()
@@ -126,6 +135,17 @@ class BattleState(BaseState):
                 continue
 
             width = math.floor(character.width * 1.5)
+            character.rest_bar = ProgressBar(
+                character.x - (width - character.width) / 2,
+                character.y - 14,           
+                width,
+                3,
+                value=character.current_rest_time,
+                max_value=character.rest_time,
+                color=pygame.Color(200, 200, 40), 
+                theme=BAR_THEME,
+            )
+
             character.energy_bar = ProgressBar(
                 character.x - (width - character.width) / 2,
                 character.y - 10,
@@ -149,6 +169,18 @@ class BattleState(BaseState):
 
         for enemy in self.enemies:
             width = math.floor(enemy.width * 1.5)
+
+            enemy.rest_bar = ProgressBar(
+                enemy.x - (width - enemy.width) / 2,
+                enemy.y - 14,
+                width,
+                3,
+                value=enemy.current_rest_time,
+                max_value=enemy.rest_time,
+                color=pygame.Color(200, 200, 40),
+                theme=BAR_THEME,
+            )
+
             enemy.energy_bar = ProgressBar(
                 enemy.x - (width - enemy.width) / 2,
                 enemy.y - 10,
@@ -164,10 +196,7 @@ class BattleState(BaseState):
         if not self.battle_started:
             self.battle_started = True
             self._trigger_starting_dialogue()
-
-        for enemy in self.enemies:
-            if not enemy.dead:
-                enemy.update(dt)
+            return
 
     def _trigger_starting_dialogue(self) -> None:
         from src.states.game.BattleMenuState import BattleMenuState
@@ -188,11 +217,12 @@ class BattleState(BaseState):
                 BattleMessageState(self.state_machine),
                 battle_state=self,
                 message=message,
-                on_close=open_menu,
+                on_close=open_take_turn,
             )
 
-        def open_menu() -> None:
-            self.state_machine.push(BattleMenuState(self.state_machine), battle_state=self)
+        def open_take_turn():
+            self.state_machine.push(TakeTurnState(self.state_machine), battle_state=self)
+
 
         self.state_machine.push(
             BattleMessageState(self.state_machine),
@@ -219,11 +249,13 @@ class BattleState(BaseState):
         for enemy in self.enemies:
             if not enemy.dead:
                 enemy.render(surface)
+                enemy.rest_bar.render(surface)
                 enemy.energy_bar.render(surface)
 
         for character in self.party.characters.values():
             if not character.dead:
                 character.render(surface)
+                character.rest_bar.render(surface)
                 character.energy_bar.render(surface)
                 character.exp_bar.render(surface)
 
