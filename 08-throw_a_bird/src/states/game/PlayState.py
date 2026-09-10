@@ -27,6 +27,8 @@ import math
 
 import pygame
 
+from typing import List
+
 from gale.camera import Camera
 from gale.input_handler import InputData
 from gale.physics.world import World
@@ -84,8 +86,10 @@ CAMERA_ZOOM_MIN = 1.0
 CAMERA_ZOOM_MAX = 1.5
 CAMERA_PAN_MARGIN = 300
 
-HUD_TEXT = "Drag the bird to aim and release to fling. Drag elsewhere to pan."
+SPLIT_ANGLE = math.radians(5)
 
+HUD_TEXT = "Drag the bird to aim and release to fling. Drag elsewhere to pan."
+HUD_SPLIT_READY = "Press SPACE to split into three birds!"
 
 class PlayState(BaseState):
     def enter(self) -> None:
@@ -93,6 +97,8 @@ class PlayState(BaseState):
 
         self.level = Level(self.world)
         self.bird = Bird(self.world, self.level.bird_start.x, self.level.bird_start.y)
+
+        self.extra_birds: List[Bird] = []
 
         self.camera = Camera(settings.VIRTUAL_WIDTH, settings.VIRTUAL_HEIGHT)
         self.camera.x, self.camera.y = self.bird.position
@@ -109,17 +115,25 @@ class PlayState(BaseState):
         self.flinging = False
         self.idle_frames = 0
 
+        self.has_split = False
+        self.has_collided = False
+
         self.pressed_position = pygame.Vector2()
         self.pressed_camera_target = pygame.Vector2()
         self.aim_offset = pygame.Vector2()
+
+    @property
+    def all_birds(self) -> List[Bird]:
+        return [self.bird, *self.extra_birds]
 
     def fixed_update(self) -> None:
         # Driven by gale.game.Game's own accumulator (added in gale
         # 1.10.0) instead of calling self.world.update(dt) here, which
         # would otherwise run a second, redundant accumulator on top of
-        # World's own.
+        # World's own.   
         self.world.fixed_update()
         self.level.fixed_update()
+        self._check_bird_collisions()
 
     def update(self, dt: float) -> None:
         self.level.update(dt)
@@ -139,6 +153,18 @@ class PlayState(BaseState):
         self._update_zoom(dt)
         self.camera.update(dt)
 
+    def _check_bird_collisions(self) -> None:
+        if self.has_collided:
+            return
+
+        for bird in self.all_birds:
+            for other in bird.body.touching_bodies:
+                if other.user_data == "wind":
+                    continue
+                self.has_collided = True
+                return
+
+
     def _hold_bird_at_rest(self) -> None:
         self.bird.reset()
 
@@ -157,22 +183,55 @@ class PlayState(BaseState):
         self.bird.body.angular_velocity = 0.0
 
     def _update_idle(self) -> None:
-        linear_speed = self.bird.body.velocity.length()
-        angular_speed = abs(self.bird.body.angular_velocity)
+        all_slow = True
+        for bird in self.all_birds:
+            linear_speed = bird.body.velocity.length()
+            angular_speed = abs(bird.body.angular_velocity)
 
-        if (
-            linear_speed < IDLE_LINEAR_SPEED_THRESHOLD
-            and angular_speed < IDLE_ANGULAR_SPEED_THRESHOLD
-        ):
+            if (
+                linear_speed >= IDLE_LINEAR_SPEED_THRESHOLD
+                or angular_speed >= IDLE_ANGULAR_SPEED_THRESHOLD
+            ):
+                all_slow = False
+                break
+
+        if all_slow:
             self.idle_frames += 1
 
             if self.idle_frames > IDLE_FRAMES_LIMIT:
                 self.flinging = False
                 self.idle_frames = 0
-                self.bird.reset()
+                self._reset_all_birds()
                 self.camera_target.update(self.bird.position)
         else:
             self.idle_frames = 0
+
+    def _reset_all_birds(self) -> None:
+        for bird in self.extra_birds:
+            self.world.destroy_body(bird.body)
+        self.extra_birds = []
+        self.has_split = False
+        self.has_collided = False
+        self.bird.reset()
+
+    def _split(self) ->None:
+        if not self.flinging or self.has_split or self.has_collided:
+            return
+
+        velocity = self.bird.body.velocity
+        speed = velocity.length()
+        if speed < 1.0:
+            return
+
+        self.has_split = True
+
+        base_angle = math.atan2(velocity.y, velocity.x)
+
+        for delta in (-SPLIT_ANGLE, SPLIT_ANGLE):
+            angle = base_angle + delta
+            new_bird = Bird(self.world, self.bird.position.x, self.bird.position.y)
+            new_bird.body.velocity = (speed * math.cos(angle), speed * math.sin(angle))
+            self.extra_birds.append(new_bird)
 
     def _update_zoom(self, dt: float) -> None:
         distance = abs(self.bird.position.x - self.bird.initial_position.x)
@@ -189,10 +248,23 @@ class PlayState(BaseState):
         self.level.render(surface, self.camera)
         self.bird.render(surface, self.camera)
 
+        for bird in self.extra_birds:
+            bird.render(surface, self.camera)
+            
         if self.aiming:
             self._render_pull_line(surface)
 
         render_text(surface, HUD_TEXT, settings.FONTS["small"], 10, 10, (70, 55, 40))
+
+        if self.flinging and not self.has_split and not self.has_collided:
+            render_text(
+                surface,
+                HUD_SPLIT_READY,
+                settings.FONTS["small"],
+                10,
+                30,
+                (180, 40, 40)
+            )
 
     def _render_pull_line(self, surface: pygame.Surface) -> None:
         start = self.camera.world_to_screen(self.bird.initial_position)
@@ -204,6 +276,8 @@ class PlayState(BaseState):
             self._on_touch(input_data)
         elif input_id == "touch_motion":
             self._on_touch_motion(input_data)
+        elif input_id == "split" and input_data.pressed:
+            self._split()
 
     def _mouse_to_virtual(self, position) -> pygame.Vector2:
         scale_x = settings.VIRTUAL_WIDTH / settings.WINDOW_WIDTH
@@ -244,6 +318,9 @@ class PlayState(BaseState):
         self.bird.body.apply_impulse(pull.x * scale, pull.y * scale)
         self.flinging = True
         self.idle_frames = 0
+
+        self.has_split = False
+        self.has_collided = False
 
     def _on_touch_motion(self, input_data: InputData) -> None:
         if not (self.aiming or self.panning):
